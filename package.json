@@ -9,6 +9,7 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": "git+https://github.com/cs-magic/markdown-toc-gen.git",
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w",
