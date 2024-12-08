@@ -1,16 +1,16 @@
-# markdown-toc-gen
+# md-toc
 
 <!-- toc -->
 
-[markdown-toc-gen](#markdown-toc-gen) • [为什么选择 markdown-toc-gen？](#为什么选择-markdown-toc-gen) • [安装](#安装) • [快速开始](#快速开始) • [进阶使用](#进阶使用) • [配置选项](#配置选项) • [常见问题](#常见问题) • [贡献指南](#贡献指南) • [License](#license) • [致谢](#致谢)
+[md-toc](#md-toc) • [为什么选择 md-toc？](#为什么选择-md-toc) • [安装](#安装) • [快速开始](#快速开始) • [进阶使用](#进阶使用) • [配置选项](#配置选项) • [常见问题](#常见问题) • [贡献指南](#贡献指南) • [License](#license) • [致谢](#致谢)
 
 <!-- tocstop -->
 
-一个强大的 Markdown 目录生成器，基于 markdown-toc 并提供了显著增强，包括完整的中文支持、多种目录样式和丰富的自定义选项。
+一个强大的 Markdown 目录生成器，基于 md-toc 并提供了显著增强，包括完整的中文支持、多种目录样式和丰富的自定义选项。
 
-## 为什么选择 markdown-toc-gen？
+## 为什么选择 md-toc？
 
-- 🀄️ **完整的中文支持** - 完美支持中文标题和链接，解决了原生 markdown-toc 的中文问题
+- 🀄️ **完整的中文支持** - 完美支持中文标题和链接
 - 🎯 **多样化的目录样式** - 支持横向（适合简短目录）和纵向（适合详细目录）两种风格
 - ⚡️ **批量处理能力** - 轻松处理多个文档，支持 glob 模式匹配
 - 🔄 **实时监听** - 支持文件变化自动更新，完美集成到你的写作流程
@@ -21,11 +21,11 @@
 ## 安装
 
 ```bash
-npm install -g markdown-toc-gen
+npm install -g @cs-magic/md-toc
 # 或
-yarn global add markdown-toc-gen
+yarn global add @cs-magic/md-toc
 # 或
-pnpm add -g markdown-toc-gen
+pnpm add -g @cs-magic/md-toc
 ```
 
 ## 快速开始
@@ -90,7 +90,7 @@ md-toc "docs/*.md"
 ### API 使用
 
 ```typescript
-import { generateToc } from "markdown-toc-gen";
+import { generateToc } from "md-toc";
 
 // 生成目录
 await generateToc("README.md", {
@@ -116,6 +116,7 @@ await generateToc("docs/*.md", {
 | ------------ | ---------------- | ---------- | ------------------------------------------ |
 | `style`      | 目录样式         | `vertical` | `horizontal`（横向）或 `vertical`（纵向）  |
 | `autoInsert` | 自动插入目录标记 | `false`    | 当文件中没有目录标记时自动插入             |
+| `minLevel`   | 最小标题层级     | `2`        | 控制目录中包含的标题层级                   |
 | `maxLevel`   | 最大标题层级     | `2`        | 控制目录中包含的标题层级                   |
 | `watch`      | 监听文件变化     | `false`    | 当文件变化时自动更新目录                   |
 | `logLevel`   | 日志级别         | `info`     | `error`/`warn`/`info`/`debug` 控制日志输出 |
@@ -147,11 +148,11 @@ await generateToc("docs/*.md", {
 
 ## 常见问题
 
-### 为什么选择 markdown-toc-gen 而不是 markdown-toc？
+### 为什么选择 md-toc 而不是 markdown-toc？
 
-markdown-toc-gen 是基于 markdown-toc 开发的增强版本，主要解决了以下问题：
+md-toc 是基于 markdown-toc 开发的增强版本，主要解决了以下问题：
 
-1. **中文支持** - markdown-toc 在处理中文标题时存在问题，而 markdown-toc-gen 完美支持中文
+1. **中文支持** - markdown-toc 在处理中文标题时存在问题，而 md-toc 完美支持中文
 2. **更多功能** - 提供了更丰富的功能，如多种目录样式、文件监听、详细的日志等
 3. **更好的开发体验** - 提供了更友好的 API 和配置选项，支持 TypeScript
 
@@ -169,6 +170,6 @@ MIT
 
 ## 致谢
 
-- [markdown-toc](https://github.com/jonschlinkert/markdown-toc) - 本项目的基础依赖
+- [markdown-toc](https://github.com/jonschlinkert/markdown-toc) - 本项目参考
 - [chalk](https://github.com/chalk/chalk) - 终端样式库
 - 所有贡献者和用户 ❤️
