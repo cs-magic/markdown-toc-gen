@@ -124,33 +124,31 @@ function insertTocMarkers(content: string, config: TocConfig): string {
 function filterTableContent(content: string, config: TocConfig): string {
   let inTable = false;
   const logger = new Logger(config);
-  logger.debug('开始过滤表格内容');
+  logger.debug("开始过滤表格内容");
   logger.debug(`原始内容：\n${content}`);
 
-  const filteredLines = content
-    .split("\n")
-    .map((line) => {
-      // 检测表格开始（至少有一个 | 且包含 - 的行）
-      if (!inTable && line.includes("|") && line.includes("-")) {
-        inTable = true;
-        logger.debug(`检测到表格开始：${line}`);
-        return "";
-      }
+  const filteredLines = content.split("\n").map((line) => {
+    // 检测表格开始（至少有一个 | 且包含 - 的行）
+    if (!inTable && line.includes("|") && line.includes("-")) {
+      inTable = true;
+      logger.debug(`检测到表格开始：${line}`);
+      return "";
+    }
 
-      // 在表格中的行
-      if (inTable) {
-        // 如果不是表格行，说明表格结束
-        if (!line.includes("|")) {
-          inTable = false;
-          logger.debug(`检测到表格结束：${line}`);
-          return line;
-        }
-        logger.debug(`过滤表格行：${line}`);
-        return "";
+    // 在表格中的行
+    if (inTable) {
+      // 如果不是表格行，说明表格结束
+      if (!line.includes("|")) {
+        inTable = false;
+        logger.debug(`检测到表格结束：${line}`);
+        return line;
       }
+      logger.debug(`过滤表格行：${line}`);
+      return "";
+    }
 
-      return line;
-    });
+    return line;
+  });
 
   const result = filteredLines.join("\n");
   logger.debug(`过滤后的内容：\n${result}`);
@@ -167,15 +165,15 @@ function generateTocContent(content: string, config: TocConfig): string {
     const logger = new Logger(config);
 
     // 使用正则表达式提取所有标题
-    const lines = filteredContent.split('\n');
+    const lines = filteredContent.split("\n");
     const rawHeadings = [];
     let inCodeBlock = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // 检测代码块
-      if (line.trim().startsWith('```')) {
+      if (line.trim().startsWith("```")) {
         inCodeBlock = !inCodeBlock;
         continue;
       }
@@ -189,20 +187,20 @@ function generateTocContent(content: string, config: TocConfig): string {
           // 生成 slug（URL 友好的标识符）
           const slug = content
             .toLowerCase()
-            .replace(/[\s\n]/g, '-')
-            .replace(/[^\w\u4e00-\u9fa5-]/g, '') // 保留中文字符
-            .replace(/--+/g, '-')
-            .replace(/^-+|-+$/g, '');
+            .replace(/[\s\n]/g, "-")
+            .replace(/[^\w\u4e00-\u9fa5-]/g, "") // 保留中文字符
+            .replace(/--+/g, "-")
+            .replace(/^-+|-+$/g, "");
           rawHeadings.push({ level, content, slug });
         }
       }
     }
-    
+
     logger.debug(`【原始标题】：${JSON.stringify(rawHeadings, null, 2)}`);
 
     // 根据最大层级过滤标题
     const maxLevel = config.maxLevel ?? DEFAULT_CONFIG.maxLevel ?? 2;
-    const headings = rawHeadings.filter(h => h.level <= maxLevel);
+    const headings = rawHeadings.filter((h) => h.level <= maxLevel);
 
     if (headings.length === 0) {
       return ""; // 如果没有找到标题，返回空字符串
@@ -213,13 +211,13 @@ function generateTocContent(content: string, config: TocConfig): string {
     if (config.style === "horizontal") {
       // 横向样式：用圆点分隔
       tocContent = headings
-        .map(heading => `[${heading.content}](#${heading.slug})`)
+        .map((heading) => `[${heading.content}](#${heading.slug})`)
         .join(" • ");
       logger.debug(`生成横向目录：${tocContent}`);
     } else {
       // 纵向样式：保持缩进
       tocContent = headings
-        .map(heading => {
+        .map((heading) => {
           const indent = "  ".repeat(heading.level - 1);
           const line = `${indent}- [${heading.content}](#${heading.slug})`;
           logger.debug(`生成目录行：${line}`);
@@ -455,15 +453,15 @@ export function processFiles(patterns: string[], config: TocConfig): void {
   // 如果启用了 watch 模式，监听文件变化
   if (config.watch) {
     logger.info("\n正在监听文件变化...");
-    
+
     // 监听所有的 markdown 文件
     const watcher = chokidar.watch(patterns, {
-      ignored: /(^|[\/\\])\../,  // 忽略点文件
-      persistent: true
+      ignored: /(^|[\/\\])\../, // 忽略点文件
+      persistent: true,
     });
 
     // 监听文件变化事件
-    watcher.on('change', (filepath) => {
+    watcher.on("change", (filepath) => {
       logger.info(`\n检测到文件变化: ${filepath}`);
       try {
         const result = processFile(filepath, config);
@@ -478,8 +476,8 @@ export function processFiles(patterns: string[], config: TocConfig): void {
     });
 
     // 监听新增文件
-    watcher.on('add', (filepath) => {
-      if (path.extname(filepath) === '.md') {
+    watcher.on("add", (filepath) => {
+      if (path.extname(filepath) === ".md") {
         logger.info(`\n检测到新文件: ${filepath}`);
         try {
           const result = processFile(filepath, config);

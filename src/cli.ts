@@ -1,24 +1,29 @@
 #!/usr/bin/env node
 
 import minimist from "minimist";
-import { processFiles } from "./index";
+import { processFiles, loadConfig } from "./index";
 import chalk from "chalk";
 
 const argv = minimist(process.argv.slice(2));
 
+// 加载配置文件
+const fileConfig = loadConfig();
+
 const config = {
-  style: argv.style || "horizontal",
-  autoInsert: argv["auto-insert"] || false,
-  maxLevel: argv["max-level"] || 2,
-  watch: argv.watch || false,
-  logLevel: argv["log-level"] || "info",
+  style: argv.style || fileConfig.style || "horizontal",
+  autoInsert: argv["auto-insert"] || fileConfig.autoInsert || false,
+  maxLevel: argv["max-level"] || fileConfig.maxLevel || 2,
+  watch: argv.watch || fileConfig.watch || false,
+  logLevel: argv["log-level"] || fileConfig.logLevel || "info",
   markers: {
-    start: argv["start-marker"] || "<!-- toc -->",
-    end: argv["end-marker"] || "<!-- tocstop -->",
+    start: argv["start-marker"] || fileConfig.markers?.start || "<!-- toc -->",
+    end: argv["end-marker"] || fileConfig.markers?.end || "<!-- tocstop -->",
   },
 };
 
-const files = argv._;
+// 优先使用命令行参数指定的文件，如果没有则使用配置文件中的文件
+const files = argv._.length > 0 ? argv._ : fileConfig.files || [];
+
 if (files.length === 0) {
   console.log(chalk.yellow("请指定要处理的文件或目录"));
   console.log("");

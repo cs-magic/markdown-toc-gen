@@ -1,0 +1,4 @@
+{
+  "files": ["README.md", "test.md"],
+  "watch": true
+}
