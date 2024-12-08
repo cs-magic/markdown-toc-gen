@@ -3,6 +3,7 @@ import path from "path";
 import glob from "glob";
 import toc from "markdown-toc";
 import chalk from "chalk";
+import chokidar from "chokidar";
 import { TocConfig, FileConfig } from "./types";
 import { Logger } from "./logger";
 
@@ -382,7 +383,8 @@ export function processFile(filePath: string, config: TocConfig): boolean {
     const toc = generateTocContent(newContent, config);
     newContent = replaceTocContent(newContent, toc, config);
 
-    if (newContent !== content) {
+    // 在 watch 模式下，始终写入文件
+    if (config.watch || newContent !== content) {
       fs.writeFileSync(filePath, newContent);
       logger.success(`[${filePath}] 目录已更新`);
       return true;
@@ -419,31 +421,76 @@ export function processFiles(patterns: string[], config: TocConfig): void {
   logger.debug(`找到 ${files.length} 个 Markdown 文件待处理`);
   logger.debug(`文件列表：\n${files.join("\n")}`);
 
-  // 处理每个文件
-  let successCount = 0;
-  let skipCount = 0;
-  let failCount = 0;
+  const processAllFiles = () => {
+    let successCount = 0;
+    let skipCount = 0;
+    let failCount = 0;
 
-  files.forEach((file) => {
-    try {
-      const result = processFile(file, config);
-      if (result) {
-        successCount++;
-      } else {
-        skipCount++;
+    files.forEach((file) => {
+      try {
+        const result = processFile(file, config);
+        if (result) {
+          successCount++;
+        } else {
+          skipCount++;
+        }
+      } catch (error) {
+        failCount++;
+        logger.error(`[${file}] 处理失败：${error}`);
       }
-    } catch (error) {
-      failCount++;
-      logger.error(`[${file}] 处理失败：${error}`);
-    }
-  });
+    });
 
-  // 输出处理结果统计
-  logger.info("\n处理完成:");
-  logger.success(`  ✓ ${successCount} 个文件已更新`);
-  logger.info(`  - ${skipCount} 个文件无需更新`);
-  if (failCount > 0) {
-    logger.error(`  × ${failCount} 个文件处理失败`);
+    // 输出处理结果统计
+    logger.info("\n处理完成:");
+    logger.success(`  ✓ ${successCount} 个文件已更新`);
+    logger.info(`  - ${skipCount} 个文件无需更新`);
+    if (failCount > 0) {
+      logger.error(`  × ${failCount} 个文件处理失败`);
+    }
+  };
+
+  // 首次处理所有文件
+  processAllFiles();
+
+  // 如果启用了 watch 模式，监听文件变化
+  if (config.watch) {
+    logger.info("\n正在监听文件变化...");
+    
+    // 监听所有的 markdown 文件
+    const watcher = chokidar.watch(patterns, {
+      ignored: /(^|[\/\\])\../,  // 忽略点文件
+      persistent: true
+    });
+
+    // 监听文件变化事件
+    watcher.on('change', (filepath) => {
+      logger.info(`\n检测到文件变化: ${filepath}`);
+      try {
+        const result = processFile(filepath, config);
+        if (result) {
+          logger.success(`✓ 文件已更新: ${filepath}`);
+        } else {
+          logger.info(`- 文件无需更新: ${filepath}`);
+        }
+      } catch (error) {
+        logger.error(`× 处理失败: ${filepath}\n  ${error}`);
+      }
+    });
+
+    // 监听新增文件
+    watcher.on('add', (filepath) => {
+      if (path.extname(filepath) === '.md') {
+        logger.info(`\n检测到新文件: ${filepath}`);
+        try {
+          const result = processFile(filepath, config);
+          if (result) {
+            logger.success(`✓ 文件已处理: ${filepath}`);
+          }
+        } catch (error) {
+          logger.error(`× 处理失败: ${filepath}\n  ${error}`);
+        }
+      }
+    });
   }
 }
 

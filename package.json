@@ -12,7 +12,7 @@
   "repository": "git+https://github.com/cs-magic/markdown-toc-gen.git",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc -w",
+    "dev": "tsc -w & nodemon dist/index.js --watch dist",
     "test": "jest",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write src/**/*.ts"
@@ -39,14 +39,17 @@
     "minimist": "^1.2.8"
   },
   "devDependencies": {
+    "@types/chokidar": "^2.1.7",
     "@types/glob": "^7.2.0",
     "@types/jest": "^27.0.3",
     "@types/minimist": "^1.2.2",
     "@types/node": "^16.11.11",
     "@typescript-eslint/eslint-plugin": "^5.5.0",
     "@typescript-eslint/parser": "^5.5.0",
+    "chokidar": "^4.0.1",
     "eslint": "^8.4.0",
     "jest": "^27.4.3",
+    "nodemon": "^3.1.7",
     "prettier": "^2.5.0",
     "ts-jest": "^27.1.0",
     "typescript": "^4.5.2"
