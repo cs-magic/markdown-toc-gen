@@ -166,21 +166,37 @@ function generateTocContent(content: string, config: TocConfig): string {
     const logger = new Logger(config);
 
     // 使用正则表达式提取所有标题
-    const headingRegex = /^(#{1,6})\s+(.+)$/gm;
-    let match;
+    const lines = filteredContent.split('\n');
     const rawHeadings = [];
-    while ((match = headingRegex.exec(filteredContent)) !== null) {
-      const level = match[1].length;
-      const content = match[2].trim();
-      // 生成 slug（URL 友好的标识符）
-      const slug = content
-        .toLowerCase()
-        .replace(/[\s\n]/g, '-')
-        .replace(/[^\w\u4e00-\u9fa5-]/g, '') // 保留中文字符
-        .replace(/--+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      rawHeadings.push({ level, content, slug });
+    let inCodeBlock = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // 检测代码块
+      if (line.trim().startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+
+      // 只在非代码块中匹配标题
+      if (!inCodeBlock) {
+        const match = line.match(/^(#{1,6})\s+(.+)$/);
+        if (match) {
+          const level = match[1].length;
+          const content = match[2].trim();
+          // 生成 slug（URL 友好的标识符）
+          const slug = content
+            .toLowerCase()
+            .replace(/[\s\n]/g, '-')
+            .replace(/[^\w\u4e00-\u9fa5-]/g, '') // 保留中文字符
+            .replace(/--+/g, '-')
+            .replace(/^-+|-+$/g, '');
+          rawHeadings.push({ level, content, slug });
+        }
+      }
     }
+    
     logger.debug(`【原始标题】：${JSON.stringify(rawHeadings, null, 2)}`);
 
     // 根据最大层级过滤标题
