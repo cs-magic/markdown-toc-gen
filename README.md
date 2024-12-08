@@ -62,46 +62,54 @@ md-toc README.md --watch
 ### API 使用
 
 ```typescript
-import { generateToc } from 'markdown-toc-gen';
+import { generateToc } from "markdown-toc-gen";
 
 // 生成目录
-await generateToc('README.md', {
-  style: 'horizontal',
+await generateToc("README.md", {
+  style: "horizontal",
   autoInsert: true,
-  maxLevel: 2
+  maxLevel: 2,
 });
 
 // 批量处理
-await generateToc(['doc1.md', 'doc2.md'], {
-  style: 'vertical'
+await generateToc(["doc1.md", "doc2.md"], {
+  style: "vertical",
 });
 
 // 使用 glob 模式
-await generateToc('docs/*.md', {
-  watch: true
+await generateToc("docs/*.md", {
+  watch: true,
 });
 ```
 
 ## 配置选项
 
-| 选项 | 说明 | 默认值 |
-|------|------|--------|
-| `style` | 目录样式 (`horizontal`/`vertical`) | `horizontal` |
-| `autoInsert` | 自动插入目录标记 | `false` |
-| `maxLevel` | 最大标题层级 | `2` |
-| `watch` | 监听文件变化 | `false` |
-| `markers` | 自定义目录标记 | `<!-- toc -->`/`<!-- tocstop -->` |
+| 选项         | 说明                               | 默认值                            |
+| ------------ | ---------------------------------- | --------------------------------- |
+| `style`      | 目录样式 (`horizontal`/`vertical`) | `horizontal`                      |
+| `autoInsert` | 自动插入目录标记                   | `false`                           |
+| `maxLevel`   | 最大标题层级                       | `2`                               |
+| `watch`      | 监听文件变化                       | `false`                           |
+| `markers`    | 自定义目录标记                     | `<!-- toc -->`/`<!-- tocstop -->` |
 
 ## 目录标记
 
 在 Markdown 文件中使用以下标记来指定目录位置：
 
-```markdown
+````markdown
 <!-- toc -->
+
 目录将自动生成在这里
+
 <!-- tocstop -->
+
 ```
+
+<!-- toc --> <!-- tocstop -->
+
 
 ## License
 
 MIT
+```
+````

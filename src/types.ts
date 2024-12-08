@@ -27,8 +27,8 @@ export interface TocConfig {
    * 自定义目录标记
    */
   markers?: {
-    start?: string;
-    end?: string;
+    start: string;
+    end: string;
   };
 }
 

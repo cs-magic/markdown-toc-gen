@@ -19,52 +19,205 @@ const DEFAULT_CONFIG: TocConfig = {
  * 检测是否包含目录标记
  */
 function hasTocMarkers(content: string, config: TocConfig): boolean {
-  const {
-    start = DEFAULT_CONFIG.markers!.start,
-    end = DEFAULT_CONFIG.markers!.end,
-  } = config.markers || {};
-  return content.includes(start!) && content.includes(end!);
+  const { start = DEFAULT_CONFIG.markers!.start, end = DEFAULT_CONFIG.markers!.end } = config.markers || {};
+  
+  // 将内容按行分割
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+  let hasStart = false;
+  let hasEnd = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // 检查是否在代码块内
+    if (line.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    
+    // 在代码块内的内容跳过
+    if (inCodeBlock) continue;
+    
+    // 检查是否是转义的标记
+    if (line.startsWith('\\')) continue;
+    
+    // 检查标记
+    if (line === start) hasStart = true;
+    if (line === end) hasEnd = true;
+  }
+
+  return hasStart && hasEnd;
 }
 
 /**
  * 在指定位置插入目录标记
  */
 function insertTocMarkers(content: string, config: TocConfig): string {
-  const {
-    start = DEFAULT_CONFIG.markers!.start,
-    end = DEFAULT_CONFIG.markers!.end,
-  } = config.markers || {};
-  const lines = content.split("\n");
-  const h1Index = lines.findIndex((line) => /^#\s/.test(line));
+  const { start = DEFAULT_CONFIG.markers!.start, end = DEFAULT_CONFIG.markers!.end } = config.markers || {};
+  const lines = content.split('\n');
+  
+  // 找到第一个非代码块内的一级标题
+  let inCodeBlock = false;
+  let h1Index = -1;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    if (line.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    
+    if (!inCodeBlock && /^#\s/.test(line)) {
+      h1Index = i;
+      break;
+    }
+  }
+  
   const insertIndex = h1Index !== -1 ? h1Index + 1 : 0;
-  lines.splice(insertIndex, 0, "", start!, "", end!, "");
-  return lines.join("\n");
+  // 确保 start 和 end 有值
+  const startMarker = start || DEFAULT_CONFIG.markers!.start;
+  const endMarker = end || DEFAULT_CONFIG.markers!.end;
+  lines.splice(insertIndex, 0, '', startMarker, '', endMarker, '');
+  return lines.join('\n');
+}
+
+/**
+ * 过滤掉表格内容，避免 markdown-toc 解析错误
+ */
+function filterTableContent(content: string): string {
+  let inTable = false;
+  return content.split('\n')
+    .map(line => {
+      // 检测表格开始（至少有一个 | 且包含 - 的行）
+      if (!inTable && line.includes('|') && line.includes('-')) {
+        inTable = true;
+        return '';
+      }
+      
+      // 在表格中的行
+      if (inTable) {
+        // 如果不是表格行，说明表格结束
+        if (!line.includes('|')) {
+          inTable = false;
+          return line;
+        }
+        return '';
+      }
+      
+      return line;
+    })
+    .join('\n');
 }
 
 /**
  * 生成目录内容
  */
 function generateTocContent(content: string, config: TocConfig): string {
-  const tocResult = toc(content).json.filter(
-    (heading) => heading.lvl <= (config.maxLevel || DEFAULT_CONFIG.maxLevel!)
-  );
-
-  if (config.style === "horizontal") {
-    return tocResult
-      .map(
-        (heading) => `[${heading.content}](#${toc.slugify(heading.content)})`
+  try {
+    // 过滤表格内容
+    const filteredContent = filterTableContent(content);
+    console.log('Filtered content:', filteredContent);
+    
+    const result = toc(filteredContent, {
+      firsth1: true,  // 包含第一个 h1
+      maxdepth: config.maxLevel || DEFAULT_CONFIG.maxLevel!
+    });
+    
+    // 从 tokens 中提取标题
+    const headings = result.tokens
+      .filter(token => 
+        token.type === 'inline' && 
+        token.lvl && 
+        token.lvl <= (config.maxLevel || DEFAULT_CONFIG.maxLevel!)
       )
-      .join(" • ");
-  }
+      .map(token => ({
+        content: token.content || '',
+        level: token.lvl || 1
+      }));
+    
+    console.log('Headings:', headings);
+    
+    if (headings.length === 0) {
+      return ''; // 如果没有找到标题，返回空字符串
+    }
 
-  return tocResult
-    .map(
-      (heading) =>
-        `${"  ".repeat(heading.lvl - 1)}- [${heading.content}](#${toc.slugify(
-          heading.content
-        )})`
-    )
-    .join("\n");
+    // 转换为横向样式
+    if (config.style === "horizontal") {
+      return headings
+        .map(heading => `[${heading.content}](#${toc.slugify(heading.content)})`)
+        .join(" • ");
+    }
+
+    // 纵向样式
+    return headings
+      .map(heading => 
+        `${"  ".repeat(heading.level - 1)}- [${heading.content}](#${toc.slugify(heading.content)})`
+      )
+      .join("\n");
+  } catch (error) {
+    console.error('生成目录时出错:', error);
+    return ''; // 发生错误时返回空字符串
+  }
+}
+
+/**
+ * 替换目录内容
+ */
+function replaceTocContent(content: string, tocContent: string, config: TocConfig): string {
+  const { start = DEFAULT_CONFIG.markers!.start, end = DEFAULT_CONFIG.markers!.end } = config.markers || {};
+  
+  // 将内容按行分割
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+  let result: string[] = [];
+  let skipUntilEnd = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // 检查代码块
+    if (line.trim().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      result.push(line);
+      continue;
+    }
+    
+    // 在代码块内的内容保持不变
+    if (inCodeBlock) {
+      result.push(line);
+      continue;
+    }
+    
+    // 检查转义标记
+    if (line.trim().startsWith('\\')) {
+      result.push(line);
+      continue;
+    }
+    
+    // 处理目录标记
+    if (line.trim() === start && !skipUntilEnd) {
+      result.push(line);
+      result.push('');
+      result.push(tocContent);
+      result.push('');
+      skipUntilEnd = true;
+      continue;
+    }
+    
+    if (line.trim() === end) {
+      result.push(line);
+      skipUntilEnd = false;
+      continue;
+    }
+    
+    if (!skipUntilEnd) {
+      result.push(line);
+    }
+  }
+  
+  return result.join('\n');
 }
 
 /**
@@ -84,15 +237,7 @@ async function processFile(filePath: string, config: TocConfig): Promise<void> {
     }
 
     const tocContent = generateTocContent(content, config);
-    const {
-      start = DEFAULT_CONFIG.markers!.start,
-      end = DEFAULT_CONFIG.markers!.end,
-    } = config.markers || {};
-    const tocBlock = `${start}\n\n${tocContent}\n\n${end}`;
-    newContent = newContent.replace(
-      new RegExp(`${start}[\\s\\S]*?${end}`),
-      tocBlock
-    );
+    newContent = replaceTocContent(newContent, tocContent, config);
 
     if (newContent !== content) {
       fs.writeFileSync(filePath, newContent);
