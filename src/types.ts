@@ -1,7 +1,7 @@
 export interface TocConfig {
   /**
    * 目录样式：横向或纵向
-   * @default 'horizontal'
+   * @default 'vertical'
    */
   style?: 'horizontal' | 'vertical';
 
@@ -16,6 +16,12 @@ export interface TocConfig {
    * @default 2
    */
   maxLevel?: number;
+
+  /**
+   * 最小标题层级
+   * @default 2
+   */
+  minLevel?: number;
 
   /**
    * 是否监听文件变化

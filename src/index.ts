@@ -1,16 +1,15 @@
 import fs from "fs";
 import path from "path";
 import glob from "glob";
-import toc from "markdown-toc";
-import chalk from "chalk";
 import chokidar from "chokidar";
 import { TocConfig, FileConfig } from "./types";
 import { Logger } from "./logger";
 
 const DEFAULT_CONFIG: TocConfig = {
-  style: "horizontal",
+  style: "vertical",
   autoInsert: false,
   maxLevel: 2,
+  minLevel: 2,
   watch: false,
   logLevel: "info",
   markers: {
@@ -200,7 +199,10 @@ function generateTocContent(content: string, config: TocConfig): string {
 
     // 根据最大层级过滤标题
     const maxLevel = config.maxLevel ?? DEFAULT_CONFIG.maxLevel ?? 2;
-    const headings = rawHeadings.filter((h) => h.level <= maxLevel);
+    const minLevel = config.minLevel ?? DEFAULT_CONFIG.minLevel ?? 2;
+    const headings = rawHeadings.filter(
+      (h) => h.level <= maxLevel && h.level >= minLevel
+    );
 
     if (headings.length === 0) {
       return ""; // 如果没有找到标题，返回空字符串
