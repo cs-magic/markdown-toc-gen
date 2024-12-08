@@ -19,7 +19,10 @@ const DEFAULT_CONFIG: TocConfig = {
 /**
  * 检测是否包含目录标记
  */
-function hasTocMarkers(content: string, config: TocConfig): { hasMarkers: boolean; isSingleLine: boolean } {
+function hasTocMarkers(
+  content: string,
+  config: TocConfig
+): { hasMarkers: boolean; isSingleLine: boolean } {
   const {
     start = DEFAULT_CONFIG.markers!.start,
     end = DEFAULT_CONFIG.markers!.end,
@@ -46,7 +49,10 @@ function hasTocMarkers(content: string, config: TocConfig): { hasMarkers: boolea
     }
 
     // 检查是否包含转义标记
-    if (trimmedLine.includes("\\" + start) || trimmedLine.includes("\\" + end)) {
+    if (
+      trimmedLine.includes("\\" + start) ||
+      trimmedLine.includes("\\" + end)
+    ) {
       continue;
     }
 
@@ -234,7 +240,10 @@ function replaceTocContent(
     }
 
     // 检查是否包含转义标记
-    if (trimmedLine.includes("\\" + start) || trimmedLine.includes("\\" + end)) {
+    if (
+      trimmedLine.includes("\\" + start) ||
+      trimmedLine.includes("\\" + end)
+    ) {
       result.push(line);
       i++;
       continue;
@@ -247,16 +256,23 @@ function replaceTocContent(
       const parts = trimmedLine.split(start);
       const prefix = parts[0];
       const suffix = parts[1].split(end)[1];
-      
+
       // 横向样式且标记是单行的，就不添加换行
       if (config.style === "horizontal" && trimmedLine === start + end) {
         result.push(indent + prefix + start + tocContent + end + suffix);
       } else {
         // 纵向样式或非单行标记，保持换行
         result.push(
-          indent + prefix + start + "\n" +
-          indent + tocContent + "\n" +
-          indent + end + suffix
+          indent +
+            prefix +
+            start +
+            "\n" +
+            indent +
+            tocContent +
+            "\n" +
+            indent +
+            end +
+            suffix
         );
       }
       i++;
@@ -328,21 +344,63 @@ export function processFile(filePath: string, config: TocConfig): boolean {
 
     if (newContent !== content) {
       fs.writeFileSync(filePath, newContent);
-      console.log(
-        chalk.green(`[${filePath}] 目录已更新`)
-      );
+      console.log(chalk.green(`[${filePath}] 目录已更新`));
       return true;
     } else {
-      console.log(
-        chalk.blue(`[${filePath}] 目录无需更新`)
-      );
+      console.log(chalk.blue(`[${filePath}] 目录无需更新`));
       return false;
     }
   } catch (error) {
-    console.error(
-      chalk.red(`[${filePath}] 处理失败：${error}`)
-    );
+    console.error(chalk.red(`[${filePath}] 处理失败：${error}`));
     return false;
+  }
+}
+
+/**
+ * 处理多个文件或目录
+ */
+export function processFiles(patterns: string[], config: TocConfig): void {
+  // 展开所有文件模式
+  const files = patterns.reduce((acc: string[], pattern) => {
+    // 如果是目录，添加 /**/*.md 模式
+    if (fs.existsSync(pattern) && fs.statSync(pattern).isDirectory()) {
+      pattern = path.join(pattern, "**/*.md");
+    }
+    return acc.concat(glob.sync(pattern));
+  }, []);
+
+  // 如果没有找到文件，输出提示
+  if (files.length === 0) {
+    console.log(chalk.yellow("未找到任何 Markdown 文件"));
+    return;
+  }
+
+  // 处理每个文件
+  let successCount = 0;
+  let skipCount = 0;
+  let failCount = 0;
+
+  files.forEach((file) => {
+    try {
+      const result = processFile(file, config);
+      if (result) {
+        successCount++;
+      } else {
+        skipCount++;
+      }
+    } catch (error) {
+      failCount++;
+      console.error(chalk.red(`[${file}] 处理失败：${error}`));
+    }
+  });
+
+  // 输出处理结果统计
+  console.log("");
+  console.log(chalk.cyan("处理完成:"));
+  console.log(chalk.green(`  ✓ ${successCount} 个文件已更新`));
+  console.log(chalk.blue(`  - ${skipCount} 个文件无需更新`));
+  if (failCount > 0) {
+    console.log(chalk.red(`  × ${failCount} 个文件处理失败`));
   }
 }
 
