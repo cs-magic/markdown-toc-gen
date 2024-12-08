@@ -1,0 +1,53 @@
+{
+  "name": "@cs-magic/markdown-toc-gen",
+  "version": "0.1.0",
+  "description": "A flexible markdown table of contents generator with configurable styles",
+  "main": "dist/index.js",
+  "bin": {
+    "md-toc": "dist/cli.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "markdown",
+    "toc",
+    "table-of-contents",
+    "documentation",
+    "generator",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "glob": "^7.2.0",
+    "markdown-toc": "^1.2.0",
+    "minimist": "^1.2.8"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.2.0",
+    "@types/jest": "^27.0.3",
+    "@types/minimist": "^1.2.2",
+    "@types/node": "^16.11.11",
+    "@typescript-eslint/eslint-plugin": "^5.5.0",
+    "@typescript-eslint/parser": "^5.5.0",
+    "eslint": "^8.4.0",
+    "jest": "^27.4.3",
+    "prettier": "^2.5.0",
+    "ts-jest": "^27.1.0",
+    "typescript": "^4.5.2"
+  }
+}
