@@ -21,6 +21,9 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
     devDependencies:
+      '@cs-magic/md-toc':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@types/chokidar':
         specifier: ^2.1.7
         version: 2.1.7
@@ -224,6 +227,10 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@cs-magic/md-toc@0.5.0':
+    resolution: {integrity: sha512-xzQkzmOo7xwLNSSgGR3RQGOEamZt7kPJaikyVbFEj71lflBsa166DTmCKXRX2Us/yvHNRqOd95a3y1CA5Ng4ww==}
+    hasBin: true
 
   '@eslint-community/eslint-utils@4.4.1':
     resolution: {integrity: sha512-s3O3waFUrMV8P/XaF/+ZTp1X9XBZW1a4B97ZnjQF2KYWaFD2A8KyFBsrsfSjEmjn3RGWAIuvlneuZm3CUK3jbA==}
@@ -2182,6 +2189,13 @@ snapshots:
       '@babel/helper-validator-identifier': 7.25.9
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@cs-magic/md-toc@0.5.0':
+    dependencies:
+      chalk: 4.1.2
+      glob: 7.2.3
+      markdown-toc: 1.2.0
+      minimist: 1.2.8
 
   '@eslint-community/eslint-utils@4.4.1(eslint@8.57.1)':
     dependencies:

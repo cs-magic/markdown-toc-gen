@@ -1,4 +1,5 @@
 {
   "files": ["README.md", "test.md"],
-  "watch": true
+  "watch": false,
+  "autoInsert": true
 }

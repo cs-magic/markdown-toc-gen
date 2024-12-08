@@ -201,7 +201,7 @@ function generateTocContent(content: string, config: TocConfig): string {
     const maxLevel = config.maxLevel ?? DEFAULT_CONFIG.maxLevel ?? 2;
     const minLevel = config.minLevel ?? DEFAULT_CONFIG.minLevel ?? 2;
     const headings = rawHeadings.filter(
-      (h) => h.level <= maxLevel && h.level >= minLevel
+      (h) => h.level >= minLevel && h.level <= maxLevel
     );
 
     if (headings.length === 0) {
