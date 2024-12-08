@@ -84,40 +84,28 @@ await generateToc("docs/*.md", {
 
 ## 配置选项
 
-| 选项         | 说明                               | 默认值        |
-| ------------ | ---------------------------------- | ------------- |
-| `style`      | 目录样式 (`horizontal`/`vertical`) | `horizontal`  |
-| `autoInsert` | 自动插入目录标记                   | `false`       |
-| `maxLevel`   | 最大标题层级                       | `2`           |
-| `watch`      | 监听文件变化                       | `false`       |
-| `markers`    | 自定义目录标记                     | `<!-- toc --> |
-
-- [markdown-toc-gen](#markdown-toc-gen)
-  - [特性](#特性)
-  - [安装](#安装)
-  - [使用](#使用)
-  - [配置选项](#配置选项)
-  - [目录标记](#目录标记)
-  <!-- tocstop -->` |
+| 选项         | 说明                               | 默认值                              |
+| ------------ | ---------------------------------- | ----------------------------------- |
+| `style`      | 目录样式 (`horizontal`/`vertical`) | `horizontal`                        |
+| `autoInsert` | 自动插入目录标记                   | `false`                             |
+| `maxLevel`   | 最大标题层级                       | `2`                                 |
+| `watch`      | 监听文件变化                       | `false`                             |
+| `markers`    | 自定义目录标记                     | `\<!-- toc -->
+[markdown-toc-gen](#markdown-toc-gen) • [特性](#特性) • [安装](#安装) • [使用](#使用) • [配置选项](#配置选项) • [目录标记](#目录标记) • [[License](#license)](#license)
+<!-- tocstop -->` |
 
 ## 目录标记
 
 在 Markdown 文件中使用以下标记来指定目录位置：
 
-````markdown
+```markdown
 <!-- toc -->
 
 目录将自动生成在这里
 
 <!-- tocstop -->
-
 ```
-
-<!-- toc --><!-- tocstop -->
-
 
 ## License
 
 MIT
-```
-````

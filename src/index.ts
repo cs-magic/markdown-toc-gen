@@ -19,45 +19,48 @@ const DEFAULT_CONFIG: TocConfig = {
  * 检测是否包含目录标记
  */
 function hasTocMarkers(content: string, config: TocConfig): boolean {
-  const { start = DEFAULT_CONFIG.markers!.start, end = DEFAULT_CONFIG.markers!.end } = config.markers || {};
-  
+  const {
+    start = DEFAULT_CONFIG.markers!.start,
+    end = DEFAULT_CONFIG.markers!.end,
+  } = config.markers || {};
+
   // 将内容按行分割
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   let inCodeBlock = false;
   let hasMarkers = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    
+
     // 检查是否在代码块内
-    if (line.startsWith('```')) {
+    if (line.startsWith("```")) {
       inCodeBlock = !inCodeBlock;
       continue;
     }
-    
+
     // 在代码块内的内容跳过
     if (inCodeBlock) continue;
-    
+
     // 检查是否是转义的标记
-    if (line.startsWith('\\')) continue;
-    
+    if (line.startsWith("\\")) continue;
+
     // 检查单行标记
     if (line.includes(start) && line.includes(end)) {
       hasMarkers = true;
       break;
     }
-    
+
     // 检查多行标记
     if (line === start) {
       // 查找结束标记
       for (let j = i + 1; j < lines.length; j++) {
         const endLine = lines[j].trim();
-        if (!inCodeBlock && !endLine.startsWith('\\') && endLine === end) {
+        if (!inCodeBlock && !endLine.startsWith("\\") && endLine === end) {
           hasMarkers = true;
           break;
         }
         // 检查代码块
-        if (endLine.startsWith('```')) {
+        if (endLine.startsWith("```")) {
           inCodeBlock = !inCodeBlock;
         }
       }
@@ -72,33 +75,36 @@ function hasTocMarkers(content: string, config: TocConfig): boolean {
  * 在指定位置插入目录标记
  */
 function insertTocMarkers(content: string, config: TocConfig): string {
-  const { start = DEFAULT_CONFIG.markers!.start, end = DEFAULT_CONFIG.markers!.end } = config.markers || {};
-  const lines = content.split('\n');
-  
+  const {
+    start = DEFAULT_CONFIG.markers!.start,
+    end = DEFAULT_CONFIG.markers!.end,
+  } = config.markers || {};
+  const lines = content.split("\n");
+
   // 找到第一个非代码块内的一级标题
   let inCodeBlock = false;
   let h1Index = -1;
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    
-    if (line.startsWith('```')) {
+
+    if (line.startsWith("```")) {
       inCodeBlock = !inCodeBlock;
       continue;
     }
-    
+
     if (!inCodeBlock && /^#\s/.test(line)) {
       h1Index = i;
       break;
     }
   }
-  
+
   const insertIndex = h1Index !== -1 ? h1Index + 1 : 0;
   // 确保 start 和 end 有值
   const startMarker = start || DEFAULT_CONFIG.markers!.start;
   const endMarker = end || DEFAULT_CONFIG.markers!.end;
-  lines.splice(insertIndex, 0, '', startMarker, '', endMarker, '');
-  return lines.join('\n');
+  lines.splice(insertIndex, 0, "", startMarker, "", endMarker, "");
+  return lines.join("\n");
 }
 
 /**
@@ -106,27 +112,28 @@ function insertTocMarkers(content: string, config: TocConfig): string {
  */
 function filterTableContent(content: string): string {
   let inTable = false;
-  return content.split('\n')
-    .map(line => {
+  return content
+    .split("\n")
+    .map((line) => {
       // 检测表格开始（至少有一个 | 且包含 - 的行）
-      if (!inTable && line.includes('|') && line.includes('-')) {
+      if (!inTable && line.includes("|") && line.includes("-")) {
         inTable = true;
-        return '';
+        return "";
       }
-      
+
       // 在表格中的行
       if (inTable) {
         // 如果不是表格行，说明表格结束
-        if (!line.includes('|')) {
+        if (!line.includes("|")) {
           inTable = false;
           return line;
         }
-        return '';
+        return "";
       }
-      
+
       return line;
     })
-    .join('\n');
+    .join("\n");
 }
 
 /**
@@ -136,58 +143,71 @@ function generateTocContent(content: string, config: TocConfig): string {
   try {
     // 过滤表格内容
     const filteredContent = filterTableContent(content);
-    console.log('Filtered content:', filteredContent);
-    
+    console.log("Filtered content:", filteredContent);
+
     const result = toc(filteredContent, {
-      firsth1: true,  // 包含第一个 h1
-      maxdepth: config.maxLevel || DEFAULT_CONFIG.maxLevel!
+      firsth1: true, // 包含第一个 h1
+      maxdepth: config.maxLevel || DEFAULT_CONFIG.maxLevel!,
     });
-    
+
     // 从 tokens 中提取标题
     const headings = result.tokens
-      .filter(token => 
-        token.type === 'inline' && 
-        token.lvl && 
-        token.lvl <= (config.maxLevel || DEFAULT_CONFIG.maxLevel!)
+      .filter(
+        (token) =>
+          token.type === "inline" &&
+          token.lvl &&
+          token.lvl <= (config.maxLevel || DEFAULT_CONFIG.maxLevel!)
       )
-      .map(token => ({
-        content: token.content || '',
-        level: token.lvl || 1
+      .map((token) => ({
+        content: token.content || "",
+        level: token.lvl || 1,
       }));
-    
-    console.log('Headings:', headings);
-    
+
+    console.log("Headings:", headings);
+
     if (headings.length === 0) {
-      return ''; // 如果没有找到标题，返回空字符串
+      return ""; // 如果没有找到标题，返回空字符串
     }
 
     // 转换为横向样式
     if (config.style === "horizontal") {
       return headings
-        .map(heading => `[${heading.content}](#${toc.slugify(heading.content)})`)
+        .map(
+          (heading) => `[${heading.content}](#${toc.slugify(heading.content)})`
+        )
         .join(" • ");
     }
 
     // 纵向样式
     return headings
-      .map(heading => 
-        `${"  ".repeat(heading.level - 1)}- [${heading.content}](#${toc.slugify(heading.content)})`
+      .map(
+        (heading) =>
+          `${"  ".repeat(heading.level - 1)}- [${
+            heading.content
+          }](#${toc.slugify(heading.content)})`
       )
       .join("\n");
   } catch (error) {
-    console.error('生成目录时出错:', error);
-    return ''; // 发生错误时返回空字符串
+    console.error("生成目录时出错:", error);
+    return ""; // 发生错误时返回空字符串
   }
 }
 
 /**
  * 替换目录内容
  */
-function replaceTocContent(content: string, tocContent: string, config: TocConfig): string {
-  const { start = DEFAULT_CONFIG.markers!.start, end = DEFAULT_CONFIG.markers!.end } = config.markers || {};
-  
+function replaceTocContent(
+  content: string,
+  tocContent: string,
+  config: TocConfig
+): string {
+  const {
+    start = DEFAULT_CONFIG.markers!.start,
+    end = DEFAULT_CONFIG.markers!.end,
+  } = config.markers || {};
+
   // 将内容按行分割
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   const result: string[] = [];
   let inCodeBlock = false;
   let i = 0;
@@ -195,62 +215,75 @@ function replaceTocContent(content: string, tocContent: string, config: TocConfi
   while (i < lines.length) {
     const line = lines[i].trim();
     const originalLine = lines[i];
-    
+
     // 检查是否在代码块内
-    if (line.startsWith('```')) {
+    if (line.startsWith("```")) {
       inCodeBlock = !inCodeBlock;
       result.push(originalLine);
       i++;
       continue;
     }
-    
+
     // 在代码块内的内容直接保留
     if (inCodeBlock) {
       result.push(originalLine);
       i++;
       continue;
     }
-    
+
     // 检查是否是转义的标记
-    if (line.startsWith('\\')) {
+    if (line.startsWith("\\")) {
       result.push(originalLine);
       i++;
       continue;
     }
-    
+
     // 检查单行标记
     if (line.includes(start) && line.includes(end)) {
       // 保持原有的缩进
-      const indent = originalLine.match(/^\s*/)?.[0] || '';
+      const indent = originalLine.match(/^\s*/)?.[0] || "";
       const parts = line.split(start);
       const prefix = parts[0];
       const suffix = parts[1].split(end)[1];
-      result.push(indent + prefix + start + '\n' + 
-                 indent + tocContent + '\n' + 
-                 indent + end + suffix);
+      
+      // 横向样式且标记是单行的，就不添加换行
+      if (config.style === "horizontal" && line.trim() === start + end) {
+        result.push(indent + prefix + start + tocContent + end + suffix);
+      } else {
+        // 纵向样式或非单行标记，保持换行
+        result.push(
+          indent + prefix + start + "\n" +
+          indent + tocContent + "\n" +
+          indent + end + suffix
+        );
+      }
       i++;
       continue;
     }
-    
+
     // 检查多行标记
     if (line === start) {
       // 保持原有的缩进
-      const indent = originalLine.match(/^\s*/)?.[0] || '';
+      const indent = originalLine.match(/^\s*/)?.[0] || "";
       result.push(indent + start);
-      result.push('');
+      result.push("");
       result.push(indent + tocContent);
-      result.push('');
-      
+      result.push("");
+
       // 跳过到结束标记
       i++;
       while (i < lines.length) {
         const currentLine = lines[i].trim();
-        if (!inCodeBlock && !currentLine.startsWith('\\') && currentLine === end) {
+        if (
+          !inCodeBlock &&
+          !currentLine.startsWith("\\") &&
+          currentLine === end
+        ) {
           result.push(indent + end);
           break;
         }
         // 检查代码块
-        if (currentLine.startsWith('```')) {
+        if (currentLine.startsWith("```")) {
           inCodeBlock = !inCodeBlock;
         }
         i++;
@@ -258,12 +291,12 @@ function replaceTocContent(content: string, tocContent: string, config: TocConfi
       i++;
       continue;
     }
-    
+
     result.push(originalLine);
     i++;
   }
 
-  return result.join('\n');
+  return result.join("\n");
 }
 
 /**
