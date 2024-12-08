@@ -30,6 +30,12 @@ export interface TocConfig {
     start: string;
     end: string;
   };
+
+  /**
+   * 日志级别
+   * @default 'info'
+   */
+  logLevel?: 'error' | 'warn' | 'info' | 'debug';
 }
 
 export interface FileConfig extends TocConfig {

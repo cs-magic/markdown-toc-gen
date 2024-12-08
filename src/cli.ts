@@ -11,6 +11,7 @@ const config = {
   autoInsert: argv["auto-insert"] || false,
   maxLevel: argv["max-level"] || 2,
   watch: argv.watch || false,
+  logLevel: argv["log-level"] || "info",
   markers: {
     start: argv["start-marker"] || "<!-- toc -->",
     end: argv["end-marker"] || "<!-- tocstop -->",
@@ -29,6 +30,7 @@ if (files.length === 0) {
   console.log("  --auto-insert                  自动插入目录标记");
   console.log("  --max-level <number>           最大标题层级 (默认: 2)");
   console.log("  --watch                        监听文件变化");
+  console.log("  --log-level <error|warn|info|debug>  日志级别 (默认: info)");
   console.log("  --start-marker <string>        开始标记 (默认: <!-- toc -->)");
   console.log("  --end-marker <string>          结束标记 (默认: <!-- tocstop -->)");
   process.exit(1);

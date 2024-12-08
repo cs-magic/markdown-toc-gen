@@ -2,14 +2,16 @@ import fs from "fs";
 import path from "path";
 import glob from "glob";
 import toc from "markdown-toc";
-import chalk from "chalk"; // 新增 chalk 模块
+import chalk from "chalk";
 import { TocConfig, FileConfig } from "./types";
+import { Logger } from "./logger";
 
 const DEFAULT_CONFIG: TocConfig = {
   style: "horizontal",
   autoInsert: false,
   maxLevel: 2,
   watch: false,
+  logLevel: "info",
   markers: {
     start: "<!-- toc -->",
     end: "<!-- tocstop -->",
@@ -151,52 +153,46 @@ function generateTocContent(content: string, config: TocConfig): string {
   try {
     // 过滤表格内容
     const filteredContent = filterTableContent(content);
-    console.log("Filtered content:", filteredContent);
+    const logger = new Logger(config);
+    logger.debug(`过滤后的内容：${filteredContent}`);
 
     const result = toc(filteredContent, {
       firsth1: true, // 包含第一个 h1
-      maxdepth: config.maxLevel || DEFAULT_CONFIG.maxLevel!,
+      maxdepth: config.maxLevel || DEFAULT_CONFIG.maxLevel,
     });
 
-    // 从 tokens 中提取标题
-    const headings = result.tokens
-      .filter(
-        (token) =>
-          token.type === "inline" &&
-          token.lvl &&
-          token.lvl <= (config.maxLevel || DEFAULT_CONFIG.maxLevel!)
-      )
-      .map((token) => ({
-        content: token.content || "",
+    // 提取标题
+    const headings = result.json
+      .filter((token: any) => {
+        // 过滤掉代码块中的标题
+        const line = filteredContent.split("\n")[token.line];
+        return !line?.trim().startsWith("```");
+      })
+      .map((token: any) => ({
+        content: token.content,
+        slug: token.slug,
         level: token.lvl || 1,
       }));
 
-    console.log("Headings:", headings);
+    logger.debug(`提取的标题：${JSON.stringify(headings, null, 2)}`);
 
     if (headings.length === 0) {
       return ""; // 如果没有找到标题，返回空字符串
     }
 
-    // 转换为横向样式
-    if (config.style === "horizontal") {
-      return headings
-        .map(
-          (heading) => `[${heading.content}](#${toc.slugify(heading.content)})`
-        )
-        .join(" • ");
-    }
-
-    // 纵向样式
+    // 生成目录内容
     return headings
-      .map(
-        (heading) =>
-          `${"  ".repeat(heading.level - 1)}- [${
-            heading.content
-          }](#${toc.slugify(heading.content)})`
-      )
+      .map((heading) => {
+        const prefix =
+          config.style === "vertical"
+            ? "  ".repeat(heading.level - 1) + "-"
+            : "-";
+        return `${prefix} [${heading.content}](#${heading.slug})`;
+      })
       .join("\n");
   } catch (error) {
-    console.error("生成目录时出错:", error);
+    const logger = new Logger(config);
+    logger.error(`生成目录时出错：${error}`);
     return ""; // 发生错误时返回空字符串
   }
 }
@@ -322,36 +318,41 @@ function replaceTocContent(
  * 处理单个文件
  */
 export function processFile(filePath: string, config: TocConfig): boolean {
+  const logger = new Logger(config);
   try {
+    logger.debug(`开始处理文件：${filePath}`);
     const content = fs.readFileSync(filePath, "utf8");
     let newContent = content;
 
-    if (!hasTocMarkers(content, config).hasMarkers) {
+    const tocMarkers = hasTocMarkers(content, config);
+    logger.debug(`目录标记检查结果：${JSON.stringify(tocMarkers)}`);
+
+    if (!tocMarkers.hasMarkers) {
       if (config.autoInsert) {
+        logger.debug(`未找到目录标记，正在自动插入...`);
         newContent = insertTocMarkers(content, config);
       } else {
-        console.log(
-          chalk.yellow(
-            `[${filePath}] 未找到目录标记。使用 --auto-insert 参数可以自动添加标记。`
-          )
+        logger.warn(
+          `[${filePath}] 未找到目录标记。请手动指定标记位置，或者使用 --auto-insert 参数自动添加。`
         );
         return false;
       }
     }
 
+    logger.debug(`正在生成目录内容...`);
     const toc = generateTocContent(newContent, config);
     newContent = replaceTocContent(newContent, toc, config);
 
     if (newContent !== content) {
       fs.writeFileSync(filePath, newContent);
-      console.log(chalk.green(`[${filePath}] 目录已更新`));
+      logger.success(`[${filePath}] 目录已更新`);
       return true;
     } else {
-      console.log(chalk.blue(`[${filePath}] 目录无需更新`));
+      logger.info(`[${filePath}] 目录无需更新`);
       return false;
     }
   } catch (error) {
-    console.error(chalk.red(`[${filePath}] 处理失败：${error}`));
+    logger.error(`[${filePath}] 处理失败：${error}`);
     return false;
   }
 }
@@ -360,6 +361,7 @@ export function processFile(filePath: string, config: TocConfig): boolean {
  * 处理多个文件或目录
  */
 export function processFiles(patterns: string[], config: TocConfig): void {
+  const logger = new Logger(config);
   // 展开所有文件模式
   const files = patterns.reduce((acc: string[], pattern) => {
     // 如果是目录，添加 /**/*.md 模式
@@ -371,9 +373,12 @@ export function processFiles(patterns: string[], config: TocConfig): void {
 
   // 如果没有找到文件，输出提示
   if (files.length === 0) {
-    console.log(chalk.yellow("未找到任何 Markdown 文件"));
+    logger.warn("未找到任何 Markdown 文件");
     return;
   }
+
+  logger.debug(`找到 ${files.length} 个 Markdown 文件待处理`);
+  logger.debug(`文件列表：\n${files.join("\n")}`);
 
   // 处理每个文件
   let successCount = 0;
@@ -390,17 +395,16 @@ export function processFiles(patterns: string[], config: TocConfig): void {
       }
     } catch (error) {
       failCount++;
-      console.error(chalk.red(`[${file}] 处理失败：${error}`));
+      logger.error(`[${file}] 处理失败：${error}`);
     }
   });
 
   // 输出处理结果统计
-  console.log("");
-  console.log(chalk.cyan("处理完成:"));
-  console.log(chalk.green(`  ✓ ${successCount} 个文件已更新`));
-  console.log(chalk.blue(`  - ${skipCount} 个文件无需更新`));
+  logger.info("\n处理完成:");
+  logger.success(`  ✓ ${successCount} 个文件已更新`);
+  logger.info(`  - ${skipCount} 个文件无需更新`);
   if (failCount > 0) {
-    console.log(chalk.red(`  × ${failCount} 个文件处理失败`));
+    logger.error(`  × ${failCount} 个文件处理失败`);
   }
 }
 
