@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import glob from "glob";
 import toc from "markdown-toc";
+import chalk from "chalk"; // 新增 chalk 模块
 import { TocConfig, FileConfig } from "./types";
 
 const DEFAULT_CONFIG: TocConfig = {
@@ -18,57 +19,58 @@ const DEFAULT_CONFIG: TocConfig = {
 /**
  * 检测是否包含目录标记
  */
-function hasTocMarkers(content: string, config: TocConfig): boolean {
+function hasTocMarkers(content: string, config: TocConfig): { hasMarkers: boolean; isSingleLine: boolean } {
   const {
     start = DEFAULT_CONFIG.markers!.start,
     end = DEFAULT_CONFIG.markers!.end,
   } = config.markers || {};
 
-  // 将内容按行分割
   const lines = content.split("\n");
+  let hasStart = false;
+  let hasEnd = false;
+  let isSingleLine = false;
   let inCodeBlock = false;
-  let hasMarkers = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+  for (const line of lines) {
+    const trimmedLine = line.trim();
 
     // 检查是否在代码块内
-    if (line.startsWith("```")) {
+    if (trimmedLine.startsWith("```")) {
       inCodeBlock = !inCodeBlock;
       continue;
     }
 
     // 在代码块内的内容跳过
-    if (inCodeBlock) continue;
+    if (inCodeBlock) {
+      continue;
+    }
 
-    // 检查是否是转义的标记
-    if (line.startsWith("\\")) continue;
+    // 检查是否包含转义标记
+    if (trimmedLine.includes("\\" + start) || trimmedLine.includes("\\" + end)) {
+      continue;
+    }
 
     // 检查单行标记
-    if (line.includes(start) && line.includes(end)) {
-      hasMarkers = true;
+    if (trimmedLine.includes(start) && trimmedLine.includes(end)) {
+      hasStart = true;
+      hasEnd = true;
+      isSingleLine = true;
       break;
     }
 
     // 检查多行标记
-    if (line === start) {
-      // 查找结束标记
-      for (let j = i + 1; j < lines.length; j++) {
-        const endLine = lines[j].trim();
-        if (!inCodeBlock && !endLine.startsWith("\\") && endLine === end) {
-          hasMarkers = true;
-          break;
-        }
-        // 检查代码块
-        if (endLine.startsWith("```")) {
-          inCodeBlock = !inCodeBlock;
-        }
-      }
-      if (hasMarkers) break;
+    if (!hasStart && trimmedLine === start) {
+      hasStart = true;
+    } else if (hasStart && trimmedLine === end) {
+      hasEnd = true;
+      break;
     }
   }
 
-  return hasMarkers;
+  return {
+    hasMarkers: hasStart && hasEnd,
+    isSingleLine,
+  };
 }
 
 /**
@@ -213,41 +215,41 @@ function replaceTocContent(
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i].trim();
-    const originalLine = lines[i];
+    const line = lines[i];
+    const trimmedLine = line.trim();
 
     // 检查是否在代码块内
-    if (line.startsWith("```")) {
+    if (trimmedLine.startsWith("```")) {
       inCodeBlock = !inCodeBlock;
-      result.push(originalLine);
+      result.push(line);
       i++;
       continue;
     }
 
     // 在代码块内的内容直接保留
     if (inCodeBlock) {
-      result.push(originalLine);
+      result.push(line);
       i++;
       continue;
     }
 
-    // 检查是否是转义的标记
-    if (line.startsWith("\\")) {
-      result.push(originalLine);
+    // 检查是否包含转义标记
+    if (trimmedLine.includes("\\" + start) || trimmedLine.includes("\\" + end)) {
+      result.push(line);
       i++;
       continue;
     }
 
     // 检查单行标记
-    if (line.includes(start) && line.includes(end)) {
+    if (trimmedLine.includes(start) && trimmedLine.includes(end)) {
       // 保持原有的缩进
-      const indent = originalLine.match(/^\s*/)?.[0] || "";
-      const parts = line.split(start);
+      const indent = line.match(/^\s*/)?.[0] || "";
+      const parts = trimmedLine.split(start);
       const prefix = parts[0];
       const suffix = parts[1].split(end)[1];
       
       // 横向样式且标记是单行的，就不添加换行
-      if (config.style === "horizontal" && line.trim() === start + end) {
+      if (config.style === "horizontal" && trimmedLine === start + end) {
         result.push(indent + prefix + start + tocContent + end + suffix);
       } else {
         // 纵向样式或非单行标记，保持换行
@@ -262,9 +264,9 @@ function replaceTocContent(
     }
 
     // 检查多行标记
-    if (line === start) {
+    if (trimmedLine === start) {
       // 保持原有的缩进
-      const indent = originalLine.match(/^\s*/)?.[0] || "";
+      const indent = line.match(/^\s*/)?.[0] || "";
       result.push(indent + start);
       result.push("");
       result.push(indent + tocContent);
@@ -273,17 +275,18 @@ function replaceTocContent(
       // 跳过到结束标记
       i++;
       while (i < lines.length) {
-        const currentLine = lines[i].trim();
+        const currentLine = lines[i];
+        const currentTrimmedLine = currentLine.trim();
         if (
           !inCodeBlock &&
-          !currentLine.startsWith("\\") &&
-          currentLine === end
+          !currentTrimmedLine.includes("\\" + end) &&
+          currentTrimmedLine === end
         ) {
           result.push(indent + end);
           break;
         }
         // 检查代码块
-        if (currentLine.startsWith("```")) {
+        if (currentTrimmedLine.startsWith("```")) {
           inCodeBlock = !inCodeBlock;
         }
         i++;
@@ -292,7 +295,7 @@ function replaceTocContent(
       continue;
     }
 
-    result.push(originalLine);
+    result.push(line);
     i++;
   }
 
@@ -302,30 +305,44 @@ function replaceTocContent(
 /**
  * 处理单个文件
  */
-async function processFile(filePath: string, config: TocConfig): Promise<void> {
+export function processFile(filePath: string, config: TocConfig): boolean {
   try {
     const content = fs.readFileSync(filePath, "utf8");
     let newContent = content;
 
-    if (!hasTocMarkers(content, config)) {
+    if (!hasTocMarkers(content, config).hasMarkers) {
       if (config.autoInsert) {
         newContent = insertTocMarkers(content, config);
       } else {
-        return;
+        console.log(
+          chalk.yellow(
+            `[${filePath}] 未找到目录标记。使用 --auto-insert 参数可以自动添加标记。`
+          )
+        );
+        return false;
       }
     }
 
-    const tocContent = generateTocContent(content, config);
-    newContent = replaceTocContent(newContent, tocContent, config);
+    const toc = generateTocContent(newContent, config);
+    newContent = replaceTocContent(newContent, toc, config);
 
     if (newContent !== content) {
       fs.writeFileSync(filePath, newContent);
+      console.log(
+        chalk.green(`[${filePath}] 目录已更新`)
+      );
+      return true;
+    } else {
+      console.log(
+        chalk.blue(`[${filePath}] 目录无需更新`)
+      );
+      return false;
     }
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`处理文件 ${filePath} 时出错: ${error.message}`);
-    }
-    throw error;
+    console.error(
+      chalk.red(`[${filePath}] 处理失败：${error}`)
+    );
+    return false;
   }
 }
 
