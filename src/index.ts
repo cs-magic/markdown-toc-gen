@@ -45,7 +45,7 @@ function hasTocMarkers(
       continue;
     }
 
-    // 在代码块内的内容跳过
+    // 在代码块中的内容跳过
     if (inCodeBlock) {
       continue;
     }
@@ -120,14 +120,19 @@ function insertTocMarkers(content: string, config: TocConfig): string {
 /**
  * 过滤掉表格内容，避免 markdown-toc 解析错误
  */
-function filterTableContent(content: string): string {
+function filterTableContent(content: string, config: TocConfig): string {
   let inTable = false;
-  return content
+  const logger = new Logger(config);
+  logger.debug('开始过滤表格内容');
+  logger.debug(`原始内容：\n${content}`);
+
+  const filteredLines = content
     .split("\n")
     .map((line) => {
       // 检测表格开始（至少有一个 | 且包含 - 的行）
       if (!inTable && line.includes("|") && line.includes("-")) {
         inTable = true;
+        logger.debug(`检测到表格开始：${line}`);
         return "";
       }
 
@@ -136,14 +141,19 @@ function filterTableContent(content: string): string {
         // 如果不是表格行，说明表格结束
         if (!line.includes("|")) {
           inTable = false;
+          logger.debug(`检测到表格结束：${line}`);
           return line;
         }
+        logger.debug(`过滤表格行：${line}`);
         return "";
       }
 
       return line;
-    })
-    .join("\n");
+    });
+
+  const result = filteredLines.join("\n");
+  logger.debug(`过滤后的内容：\n${result}`);
+  return result;
 }
 
 /**
@@ -152,44 +162,57 @@ function filterTableContent(content: string): string {
 function generateTocContent(content: string, config: TocConfig): string {
   try {
     // 过滤表格内容
-    const filteredContent = filterTableContent(content);
+    const filteredContent = filterTableContent(content, config);
     const logger = new Logger(config);
-    logger.debug(`过滤后的内容：${filteredContent}`);
 
-    const result = toc(filteredContent, {
-      firsth1: true, // 包含第一个 h1
-      maxdepth: config.maxLevel || DEFAULT_CONFIG.maxLevel,
-    });
+    // 使用正则表达式提取所有标题
+    const headingRegex = /^(#{1,6})\s+(.+)$/gm;
+    let match;
+    const rawHeadings = [];
+    while ((match = headingRegex.exec(filteredContent)) !== null) {
+      const level = match[1].length;
+      const content = match[2].trim();
+      // 生成 slug（URL 友好的标识符）
+      const slug = content
+        .toLowerCase()
+        .replace(/[\s\n]/g, '-')
+        .replace(/[^\w\u4e00-\u9fa5-]/g, '') // 保留中文字符
+        .replace(/--+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      rawHeadings.push({ level, content, slug });
+    }
+    logger.debug(`【原始标题】：${JSON.stringify(rawHeadings, null, 2)}`);
 
-    // 提取标题
-    const headings = result.json
-      .filter((token: any) => {
-        // 过滤掉代码块中的标题
-        const line = filteredContent.split("\n")[token.line];
-        return !line?.trim().startsWith("```");
-      })
-      .map((token: any) => ({
-        content: token.content,
-        slug: token.slug,
-        level: token.lvl || 1,
-      }));
-
-    logger.debug(`提取的标题：${JSON.stringify(headings, null, 2)}`);
+    // 根据最大层级过滤标题
+    const maxLevel = config.maxLevel ?? DEFAULT_CONFIG.maxLevel ?? 2;
+    const headings = rawHeadings.filter(h => h.level <= maxLevel);
 
     if (headings.length === 0) {
       return ""; // 如果没有找到标题，返回空字符串
     }
 
     // 生成目录内容
-    return headings
-      .map((heading) => {
-        const prefix =
-          config.style === "vertical"
-            ? "  ".repeat(heading.level - 1) + "-"
-            : "-";
-        return `${prefix} [${heading.content}](#${heading.slug})`;
-      })
-      .join("\n");
+    let tocContent;
+    if (config.style === "horizontal") {
+      // 横向样式：用圆点分隔
+      tocContent = headings
+        .map(heading => `[${heading.content}](#${heading.slug})`)
+        .join(" • ");
+      logger.debug(`生成横向目录：${tocContent}`);
+    } else {
+      // 纵向样式：保持缩进
+      tocContent = headings
+        .map(heading => {
+          const indent = "  ".repeat(heading.level - 1);
+          const line = `${indent}- [${heading.content}](#${heading.slug})`;
+          logger.debug(`生成目录行：${line}`);
+          return line;
+        })
+        .join("\n");
+      logger.debug(`生成纵向目录：\n${tocContent}`);
+    }
+
+    return tocContent;
   } catch (error) {
     const logger = new Logger(config);
     logger.error(`生成目录时出错：${error}`);
